@@ -1,0 +1,13 @@
+;
+; This file is a list of username and password pairs for access to the
+; XML-RPC server. A colon (:) is used to separate the username and password.
+;
+; Examples:
+; 
+;     admin:strongpasswod
+;     tetsu:ichimura
+;     this is a:test
+;
+; Lines starting with a semi-colon (;) are comments and are ignored. Blank
+; lines are OK.
+;
