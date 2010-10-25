@@ -113,6 +113,11 @@ public class CraftAPI extends Plugin {
             String line;
             while ((line = buff.readLine()) != null) {
                 line = line.trim();
+
+                // Blank line
+                if (line.length() == 0) {
+                    continue;
+                }
                 
                 // Comment
                 if (line.charAt(0) == ';' || line.equals("")) {
