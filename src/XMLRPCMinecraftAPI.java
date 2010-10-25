@@ -17,11 +17,18 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+import com.sk89q.craftapi.xmlrpc.APIException;
+
 /**
  *
  * @author sk89q
  */
 public class XMLRPCMinecraftAPI {
+    /**
+     * Thrown when a bad block index is supplied.
+     */
+    private static final int BAD_BLOCK_INDEX = 10;
+    
     /**
      * Gets the block at a location.
      *
@@ -87,6 +94,44 @@ public class XMLRPCMinecraftAPI {
         etc.getServer().setBlockAt(id, x, y, z);
         return true;
     }
+    
+
+    /**
+     * Set a cuboid. A byte array must be provided with indexes defined as
+     * y * width * length + z * width + x. The value of each
+     * byte is the block ID. The minimum X, Y, and Z coordinate must be
+     * provided.
+     * 
+     * @param x1
+     * @param y1
+     * @param z1
+     * @param width
+     * @param height
+     * @param length
+     * @param data
+     * @return
+     */
+    public boolean setCuboidIDs(int x1, int y1, int z1,
+            int width, int height, int length, byte[] data)
+            throws APIException{
+        Server server = etc.getServer();
+
+        try {
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    for (int z = 0; z < length; z++) {
+                        int index = y * width * length + z * width + x;
+                        server.setBlockAt((int)data[index], x + x1, y + y1, z + z1);
+                    }
+                }
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new APIException(BAD_BLOCK_INDEX, "index = y * width * length + z * width + x");
+        }
+
+        return true;
+    }
+
     /**
      * Gets the highest block at a certain location.
      *

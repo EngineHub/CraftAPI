@@ -270,6 +270,42 @@ public class XMLRPCPlayerAPI {
     }
 
     /**
+     * Remove the item in a player's inventory slot.
+     *
+     * @param name
+     * @param slot
+     * @return
+     * @throws APIException
+     */
+    public boolean removeInventorySlot(String name, int slot)
+            throws APIException {
+        Player player = getPlayerByName(name);
+        Inventory inventory = player.getInventory();
+        inventory.removeItem(slot);
+        inventory.updateInventory();
+        return true;
+    }
+
+    /**
+     * Remove some items from a player's inventory.
+     * 
+     * @param name
+     * @param itemID
+     * @param amount
+     * @return
+     * @throws APIException
+     */
+    public boolean removeInventoryItem(String name, int itemID, int amount)
+            throws APIException {
+        Player player = getPlayerByName(name);
+        Inventory inventory = player.getInventory();
+        Item item = new Item(itemID, amount);
+        inventory.removeItem(item);
+        inventory.updateInventory();
+        return true;
+    }
+
+    /**
      * Helper method for getInventory().
      *
      * @param out
