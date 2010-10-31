@@ -303,16 +303,6 @@ public class XMLRPCServerAPI {
     }
 
     /**
-     * Checks to see if there is a reserve list.
-     *
-     * @param name
-     * @return
-     */
-    public boolean hasReserveList() {
-        return etc.getDataSource().hasReserveList();
-    }
-
-    /**
      * Add to reserve list.
      *
      * @param name
@@ -585,32 +575,12 @@ public class XMLRPCServerAPI {
     }
 
     /**
-     * Reload the reserve list.
-     *
-     * @return
-     */
-    public boolean reloadReserveList() {
-        etc.getDataSource().loadReserveList();
-        return true;
-    }
-
-    /**
      * Reload the warps.
      *
      * @return
      */
     public boolean reloadWarps() {
         etc.getDataSource().loadWarps();
-        return true;
-    }
-
-    /**
-     * Reload the whitelist.
-     *
-     * @return
-     */
-    public boolean reloadWhitelist() {
-        etc.getDataSource().loadWhitelist();
         return true;
     }
 
