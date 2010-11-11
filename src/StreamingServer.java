@@ -68,16 +68,16 @@ public class StreamingServer implements Runnable {
             Socket server;
 
             while (num < max && running) {
+                Socket sock = listener.accept();
+                
                 synchronized (this) {
-                    Socket sock = listener.accept();
                     StreamingServerClient client = new StreamingServerClient(this, sock);
                     (new Thread(client)).start();
                     num++;
                 }
             }
         } catch (IOException e) {
-            if (!running) {
-                System.out.println("Error: " + e);
+            if (running) {
                 e.printStackTrace();
             }
         }
