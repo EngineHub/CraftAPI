@@ -71,9 +71,13 @@ public class StreamingServer implements Runnable {
                 Socket sock = listener.accept();
                 
                 synchronized (this) {
-                    StreamingServerClient client = new StreamingServerClient(this, sock);
-                    (new Thread(client)).start();
-                    num++;
+                    try {
+                        StreamingServerClient client = new StreamingServerClient(this, sock);
+                        (new Thread(client)).start();
+                        num++;
+                    } catch (Throwable t) {
+                        sock.close();
+                    }
                 }
             }
         } catch (IOException e) {

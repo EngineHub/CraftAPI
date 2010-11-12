@@ -20,16 +20,46 @@ rogram. If not, see <http://www.gnu.org/licenses/>.
 
 import java.io.*;
 import java.net.*;
+import java.security.SecureRandom;
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.codec.binary.Base64;
 
 class StreamingServerClient implements Runnable {
     /**
+     * Indicates state of the client.
+     */
+    private enum State {
+        UNAUTHENTICATED,
+        READY
+    }
+
+    private static Base64 base64 = new Base64(999);
+    /**
      * Client socket.
+     */
+    
+    private State state = State.UNAUTHENTICATED;
+    /**
+     * Used for generating challenges.
+     */
+    private SecureRandom random;
+    /**
+     * Base64 decoder/encoder;
      */
     private Socket socket;
     /**
      * Server instance.
      */
     private StreamingServer server;
+    /**
+     * Challenge to use to authenticate.
+     */
+    private byte[] challenge;
+
+    private BufferedReader in;
+    private PrintStream out;
 
     /**
      * Construct the instance.
@@ -37,9 +67,18 @@ class StreamingServerClient implements Runnable {
      * @param server
      * @param socket
      */
-    public StreamingServerClient(StreamingServer server, Socket socket) {
+    public StreamingServerClient(StreamingServer server, Socket socket)
+            throws Throwable {
         this.server = server;
         this.socket = socket;
+
+        random = SecureRandom.getInstance("SHA1PRNG");
+        challenge = new byte[64];
+        random.nextBytes(challenge);
+
+        InputStreamReader inReader = new InputStreamReader(socket.getInputStream(), "utf-8");
+        in = new BufferedReader(inReader);
+        out = new PrintStream(socket.getOutputStream());
     }
 
     /**
@@ -48,11 +87,10 @@ class StreamingServerClient implements Runnable {
     public void run() {
         try {
             String line;
-            InputStreamReader inReader = new InputStreamReader(socket.getInputStream(), "utf-8");
-            BufferedReader in = new BufferedReader(inReader);
-            PrintStream out = new PrintStream(socket.getOutputStream());
 
             while ((line = in.readLine()) != null) {
+                String[] parts = line.split(" ");
+                handleUnauthenticated(parts);
             }
             
             socket.close();
@@ -61,6 +99,12 @@ class StreamingServerClient implements Runnable {
             e.printStackTrace();
         } finally {
             server.lostClient();
+        }
+    }
+
+    public void handleUnauthenticated(String[] parts) {
+        if (parts[0].equals("get-challenge")) {
+            out.println("challenge " + base64.encodeToString(challenge));
         }
     }
 }
