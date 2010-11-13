@@ -17,15 +17,16 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import java.net.*;
-import com.sk89q.craftapi.streaming.*;
+package com.sk89q.craftapi;
+
+import java.util.logging.*;
 import com.sk89q.craftapi.event.*;
 
 /**
  *
  * @author sk89q
  */
-public class StreamingAPIServerFactory implements StreamingServerFactory {
+public class LoggingEventHandler extends Handler {
     /**
      * Event dispatcher.
      */
@@ -35,20 +36,32 @@ public class StreamingAPIServerFactory implements StreamingServerFactory {
      * Construct the object.
      * 
      * @param eventDispatcher
+     * @param formatter
      */
-    public StreamingAPIServerFactory(EventDispatcher eventDispatcher) {
+    public LoggingEventHandler(EventDispatcher eventDispatcher, Formatter formatter) {
         this.eventDispatcher = eventDispatcher;
+        setFormatter(formatter);
     }
 
     /**
-     * Construct a client.
+     * Publish the record.
      * 
-     * @param server
-     * @param client
-     * @return
+     * @param record
      */
-    public StreamingServerClient createClient(StreamingServer server,
-            Socket sock) throws Throwable {
-        return new StreamingAPIServerClient(server, sock, eventDispatcher);
+    public void publish(LogRecord record) {
+        eventDispatcher.dispatch(new StdOutEvent(getFormatter().format(record)));
+    }
+
+    /**
+     * Flush the stream.
+     */
+    public void flush() {
+
+    }
+
+    /**
+     * Close the handler.
+     */
+    public void close() {
     }
 }

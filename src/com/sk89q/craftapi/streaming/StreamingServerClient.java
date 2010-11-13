@@ -34,10 +34,11 @@ import org.apache.commons.codec.binary.Base64;
  * @author sk89q
  */
 public class StreamingServerClient implements Runnable {
-    protected static final int ERROR_UNKNOWN_PACKET = 1;
-    protected static final int ERROR_BAD_PACKET = 2;
-    protected static final int ERROR_INTERNAL = 3;
-    protected static final int ERROR_AUTHENTICATION = 3;
+    public static final int ERROR_UNKNOWN_PACKET = 1;
+    public static final int ERROR_BAD_PACKET = 2;
+    public static final int ERROR_INTERNAL = 3;
+    public static final int ERROR_AUTHENTICATION = 3;
+    public static final int ERROR_TOO_MANY_CONNECTIONS = 4;
 
     /**
      * Indicates state of the client.
@@ -82,6 +83,11 @@ public class StreamingServerClient implements Runnable {
     protected PrintStream out;
 
     /**
+     * Response ID.
+     */
+    protected int responseID = 0;
+
+    /**
      * Construct the instance.
      * 
      * @param server
@@ -93,12 +99,19 @@ public class StreamingServerClient implements Runnable {
         this.socket = socket;
 
         random = SecureRandom.getInstance("SHA1PRNG");
-        challenge = new byte[64];
+        challenge = new byte[32];
         random.nextBytes(challenge);
 
         InputStreamReader inReader = new InputStreamReader(socket.getInputStream(), "utf-8");
         in = new BufferedReader(inReader);
         out = new PrintStream(socket.getOutputStream(), true, "utf-8");
+    }
+
+    /**
+     * Called on close.
+     */
+    protected void handleClose() {
+        
     }
 
     /**
@@ -110,27 +123,37 @@ public class StreamingServerClient implements Runnable {
 
             while ((line = in.readLine()) != null) {
                 String[] parts = line.split(" ");
-                try {
-                    if (state == State.UNAUTHENTICATED) {
-                        handleUnauthenticated(parts);
-                    } else {
-                        handle(parts);
+                String command = decode(parts[0]);
+                
+                synchronized (this) {
+                    responseID = 0;
+
+                    try {
+                        responseID = Integer.parseInt(parts[1]);
+
+                        if (state == State.UNAUTHENTICATED) {
+                            handleUnauthenticated(parts);
+                        } else {
+                            handle(parts);
+                        }
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        sendError(ERROR_BAD_PACKET, command);
+                    } catch (UnsupportedEncodingException e) {
+                        sendError(ERROR_BAD_PACKET, command);
+                    } catch (NumberFormatException e) {
+                        sendError(ERROR_BAD_PACKET, command);
                     }
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    sendError(ERROR_BAD_PACKET);
-                } catch (UnsupportedEncodingException e) {
-                    sendError(ERROR_BAD_PACKET);
-                } catch (NumberFormatException e) {
-                    sendError(ERROR_BAD_PACKET);
+
+                    responseID = 0;
                 }
             }
             
             socket.close();
         } catch (SocketException e) {
         } catch (IOException e) {
-            e.printStackTrace();
         } finally {
             server.lostClient();
+            handleClose();
         }
     }
 
@@ -149,20 +172,22 @@ public class StreamingServerClient implements Runnable {
      * @param parts
      */
     public void handleUnauthenticated(String[] parts) throws UnsupportedEncodingException {
+        String command = decode(parts[0]);
+
         // getChallenge
-        if (parts[0].equals("getChallenge")) {
-            send("challenge", base64.encodeToString(challenge));
+        if (command.equals("REQC")) {
+            send("CHAL", base64.encodeToString(challenge));
 
         // challengeLogin
-        } else if (parts[0].equals("challengeLogin")) {
+        } else if (command.equals("AUTH")) {
             try {
                 SecretKey key = new SecretKeySpec(challenge, "HMACSHA256");
                 Mac mac = Mac.getInstance("HMACSHA256");
                 mac.init(key);
-                byte[] digest = base64.decode(decode(parts[2]).getBytes());
+                byte[] digest = base64.decode(decode(parts[3]).getBytes());
                 if (server.getAuthenticationProvider()
-                        .verifyCredentials(mac, parts[1], digest)) {
-                    send("authOK");
+                        .verifyCredentials(mac, parts[2], digest)) {
+                    send("AUTHOK");
                     state = State.READY;
                 } else {
                     sendError(ERROR_AUTHENTICATION);
@@ -175,7 +200,7 @@ public class StreamingServerClient implements Runnable {
 
         // Unknown
         } else {
-            sendError(ERROR_UNKNOWN_PACKET);
+            sendError(ERROR_UNKNOWN_PACKET, command);
         }
     }
 
@@ -186,21 +211,23 @@ public class StreamingServerClient implements Runnable {
      */
     protected void send(Object ... args) {
         StringBuilder builder = new StringBuilder();
+        builder.append(args[0]);
+        builder.append(" ");
+        builder.append(responseID);
 
-        for (int i = 0; i < args.length; i++) {
+        for (int i = 1; i < args.length; i++) {
+            builder.append(" ");
+
             Object arg = args[i];
-            if (arg instanceof String) {
-                try {
-                    builder.append(URLEncoder.encode((String)arg, "utf-8"));
-                } catch (UnsupportedEncodingException e) {
-                    builder.append("UnsupportedEncodingException");
-                }
-            } else {
-                builder.append(arg);
-            }
 
-            if (i != args.length - 1) {
-                builder.append(" ");
+            try {
+                if (arg instanceof String) {
+                    builder.append(URLEncoder.encode((String)arg, "utf-8"));
+                } else {
+                    builder.append(URLEncoder.encode(arg.toString(), "utf-8"));
+                }
+            } catch (UnsupportedEncodingException e) {
+                builder.append("UnsupportedEncodingException");
             }
         }
 
@@ -213,7 +240,7 @@ public class StreamingServerClient implements Runnable {
      * @param args
      */
     protected void sendError(int error) {
-        send("err", error);
+        send("ERR", error);
     }
 
     /**
@@ -221,8 +248,8 @@ public class StreamingServerClient implements Runnable {
      *
      * @param args
      */
-    protected void sendError(int error, Object ... args) {
-        send("err", error, args);
+    protected void sendError(int error, String msg) {
+        send("ERR", error, msg);
     }
 
     /**

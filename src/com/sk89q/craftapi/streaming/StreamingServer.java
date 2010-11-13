@@ -107,18 +107,26 @@ public class StreamingServer implements Runnable {
                 server = socketFactory.createServerSocket(port);
             }
 
-            while (num < max && running) {
-                Socket sock = server.accept();
-                
-                synchronized (this) {
-                    try {
-                        StreamingServerClient client =
-                                factory.createClient(this, sock);
-                        (new Thread(client)).start();
-                        num++;
-                    } catch (Throwable t) {
-                        sock.close();
+            while (running) {
+                if (num < max) {
+                    Socket sock = server.accept();
+
+                    synchronized (this) {
+                        try {
+                            StreamingServerClient client =
+                                    factory.createClient(this, sock);
+                            (new Thread(client)).start();
+                            num++;
+                        } catch (Throwable t) {
+                            sock.close();
+                        }
                     }
+                } else {
+                    Socket sock = server.accept();
+                    PrintStream out = new PrintStream(sock.getOutputStream(),
+                            true, "utf-8");
+                    out.println("err " + StreamingServerClient.ERROR_TOO_MANY_CONNECTIONS);
+                    sock.close();
                 }
             }
         } catch (IOException e) {

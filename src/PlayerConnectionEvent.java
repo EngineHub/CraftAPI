@@ -17,38 +17,44 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import java.net.*;
-import com.sk89q.craftapi.streaming.*;
 import com.sk89q.craftapi.event.*;
 
 /**
  *
  * @author sk89q
  */
-public class StreamingAPIServerFactory implements StreamingServerFactory {
+public class PlayerConnectionEvent extends Event {
     /**
-     * Event dispatcher.
+     * Player.
      */
-    private EventDispatcher eventDispatcher;
+    private Player player;
+    /**
+     * Whether the user connected.
+     */
+    private boolean connected;
 
     /**
      * Construct the object.
-     * 
-     * @param eventDispatcher
+     *
+     * @param player
+     * @param connected
      */
-    public StreamingAPIServerFactory(EventDispatcher eventDispatcher) {
-        this.eventDispatcher = eventDispatcher;
+    public PlayerConnectionEvent(Player player, boolean connected) {
+        this.player = player;
+        this.connected = connected;
     }
 
     /**
-     * Construct a client.
-     * 
-     * @param server
-     * @param client
-     * @return
+     * @return the player
      */
-    public StreamingServerClient createClient(StreamingServer server,
-            Socket sock) throws Throwable {
-        return new StreamingAPIServerClient(server, sock, eventDispatcher);
+    public Player getPlayer() {
+        return player;
+    }
+
+    /**
+     * @return the message
+     */
+    public boolean connected() {
+        return connected;
     }
 }

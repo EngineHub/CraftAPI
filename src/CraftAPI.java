@@ -19,15 +19,19 @@
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.StreamHandler;
+import java.util.logging.FileHandler;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.io.*;
 import java.net.*;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
 import com.sk89q.craftapi.*;
 import com.sk89q.craftapi.auth.*;
+import com.sk89q.craftapi.event.*;
 
 /**
  * Entry point for the plugin for hey0's mod.
@@ -40,15 +44,49 @@ public class CraftAPI extends Plugin {
      */
     private static final Logger logger = Logger.getLogger("Minecraft.CraftAPI");
     /**
+     * Listener for the plugin system.
+     */
+    private CraftAPIListener listener;
+    /**
      * Stores a list of running servers.
      */
     private ArrayList<ServerInterface> servers = new ArrayList<ServerInterface>();
+    /**
+     * Global event dispatcher.
+     */
+    private EventDispatcher eventDispatcher;
+
+    /**
+     * Construct the object.
+     */
+    public CraftAPI() {
+        eventDispatcher = new EventDispatcher();
+        listener = new CraftAPIListener(eventDispatcher);
+
+        try {
+            System.setOut(new PrintStream(new CopyingEventOuputStream(System.out, eventDispatcher)));
+            System.setErr(new PrintStream(new CopyingEventOuputStream(System.err, eventDispatcher)));
+            // Logger.GLOBAL_LOGGER_NAME doesn't seem to work
+            Logger.getLogger("Minecraft").addHandler(
+                    new LoggingEventHandler(eventDispatcher, new LogFormat()));
+        } catch (Throwable t) {
+            logger.log(Level.WARNING, "CraftAPI: Could not redirect stdout/stderr");
+            t.printStackTrace();
+        }
+    }
 
     /**
      * Initializes the plugin.
      */
     @Override
     public void initialize() {
+        PluginLoader loader = etc.getLoader();
+        loader.addListener(PluginLoader.Hook.CHAT, listener, this,
+                PluginListener.Priority.HIGH);
+        loader.addListener(PluginLoader.Hook.LOGIN, listener, this,
+                PluginListener.Priority.HIGH);
+        loader.addListener(PluginLoader.Hook.DISCONNECT, listener, this,
+                PluginListener.Priority.HIGH);
     }
 
     /**
@@ -105,7 +143,7 @@ public class CraftAPI extends Plugin {
 
                     // Start!
                     startServer(new StreamingAPIInterface(port, maxConnections,
-                            bindAddress, useSSL, auth));
+                            bindAddress, useSSL, auth, eventDispatcher));
                 } catch (UnknownHostException e) {
                     logger.log(Level.SEVERE, "Unknown bind address for the streaming API server: "
                             + e.getMessage());
@@ -127,6 +165,7 @@ public class CraftAPI extends Plugin {
     public void disable() {
         logger.log(Level.INFO, "CraftAPI is closing servers");
 
+        eventDispatcher.unregisterAll();
         stopAllServers();
     }
 
@@ -144,6 +183,7 @@ public class CraftAPI extends Plugin {
      * Stop all servers.
      */
     public void stopAllServers() {
+        eventDispatcher.unregisterAll();
         for (ServerInterface server : servers) {
             server.shutdown();
         }

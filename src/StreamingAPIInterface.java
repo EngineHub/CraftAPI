@@ -25,6 +25,7 @@ import java.util.logging.Logger;
 import com.sk89q.craftapi.*;
 import com.sk89q.craftapi.streaming.*;
 import com.sk89q.craftapi.auth.*;
+import com.sk89q.craftapi.event.*;
 
 /**
  * Streaming API server interface.
@@ -61,6 +62,10 @@ public class StreamingAPIInterface implements ServerInterface {
      * Streaming server.
      */
     private StreamingServer server;
+    /**
+     * Event dispatcher.
+     */
+    private EventDispatcher eventDispatcher;
 
     /**
      * Construct an instance.
@@ -70,12 +75,14 @@ public class StreamingAPIInterface implements ServerInterface {
      */
     public StreamingAPIInterface(int port, int maxConnections,
             InetAddress listenInterface, boolean useSSL,
-            AuthenticationProvider authProvider) {
+            AuthenticationProvider authProvider,
+            EventDispatcher eventDispatcher) {
         this.port = port;
         this.maxConnections = maxConnections;
         this.listenInterface = listenInterface;
         this.useSSL = useSSL;
         this.authProvider = authProvider;
+        this.eventDispatcher = eventDispatcher;
     }
 
     /**
@@ -85,7 +92,7 @@ public class StreamingAPIInterface implements ServerInterface {
         logger.log(Level.INFO, "Starting streaming API server");
         server = new StreamingServer(port, maxConnections,
                 listenInterface, useSSL, authProvider,
-                new StreamingAPIServerFactory());
+                new StreamingAPIServerFactory(eventDispatcher));
         Thread thread = new Thread(server);
         thread.start();
     }

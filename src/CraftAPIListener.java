@@ -17,15 +17,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import java.net.*;
-import com.sk89q.craftapi.streaming.*;
 import com.sk89q.craftapi.event.*;
 
 /**
+ * Event listener for Hey0's server mod.
  *
  * @author sk89q
  */
-public class StreamingAPIServerFactory implements StreamingServerFactory {
+public class CraftAPIListener extends PluginListener {
     /**
      * Event dispatcher.
      */
@@ -36,19 +35,40 @@ public class StreamingAPIServerFactory implements StreamingServerFactory {
      * 
      * @param eventDispatcher
      */
-    public StreamingAPIServerFactory(EventDispatcher eventDispatcher) {
+    public CraftAPIListener(EventDispatcher eventDispatcher) {
         this.eventDispatcher = eventDispatcher;
     }
 
     /**
-     * Construct a client.
+     * Called on chat.
      * 
-     * @param server
-     * @param client
+     * @param player
+     * @param message
      * @return
      */
-    public StreamingServerClient createClient(StreamingServer server,
-            Socket sock) throws Throwable {
-        return new StreamingAPIServerClient(server, sock, eventDispatcher);
+    @Override
+    public boolean onChat(Player player, String message) {
+        eventDispatcher.dispatch(new ChatEvent(player, message));
+        return false;
+    }
+
+    /**
+     * Called on login.
+     * 
+     * @param player
+     */
+    @Override
+    public void onLogin(Player player) {
+        eventDispatcher.dispatch(new PlayerConnectionEvent(player, true));
+    }
+
+    /**
+     * Called on disconnect.
+     *
+     * @param player
+     */
+    @Override
+    public void onDisconnect(Player player) {
+        eventDispatcher.dispatch(new PlayerConnectionEvent(player, false));
     }
 }
