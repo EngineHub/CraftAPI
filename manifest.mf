@@ -1,3 +1,3 @@
 Manifest-Version: 1.0
 X-COMMENT: Main-Class will be added automatically by build
-Class-Path: commons-logging.jar ws-commons-util.jar xmlrpc-client.jar xmlrpc-common.jar xmlrpc-server.jar
+Class-Path: commons-lang.jar commons-codec.jar commons-collections.jar commons-configuration.jar commons-logging.jar ws-commons-util.jar xmlrpc-client.jar xmlrpc-common.jar xmlrpc-server.jar

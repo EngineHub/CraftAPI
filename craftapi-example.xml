@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<!--
+
+    CraftAPI configuration: use this file to configure CraftAPI,
+    modify credentials, and adjust server settings.
+
+-->
+<craftapi>
+    <xml-rpc>
+        <enabled>false</enabled>
+        <port>20012</port>
+    </xml-rpc>
+    <streaming-api>
+        <enabled>false</enabled>
+        <port>20013</port>
+        <bind-address></bind-address>
+        <use-ssl>false</use-ssl>
+        <max-connections>10</max-connections>
+    </streaming-api>
+    <authentication>
+<!--
+        <credential>
+            <username>access</username>
+            <password>password</password>
+            <service>XML-RPC</service>
+        </credential>
+        <credential>
+            <username>tetsu</username>
+            <password>rocks</password>
+            <service>StreamingAPI</service>
+            <service>XML-RPC</service>
+        </credential>
+-->
+    </authentication>
+</craftapi>

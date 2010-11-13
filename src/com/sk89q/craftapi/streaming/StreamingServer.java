@@ -17,10 +17,15 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+package com.sk89q.craftapi.streaming;
+
 import java.io.*;
 import java.net.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javax.net.*;
+import javax.net.ssl.*;
+import com.sk89q.craftapi.auth.*;
 
 /**
  *
@@ -40,23 +45,46 @@ public class StreamingServer implements Runnable {
      */
     private int max;
     /**
+     * Address to listen to.
+     */
+    private InetAddress listenInterface;
+    /**
+     * Whether to use SSL;
+     */
+    private boolean useSSL;
+    /**
      * Indicates that the server should be running.
      */
     private boolean running = true;
     /**
+     * Authentication provider.
+     */
+    private AuthenticationProvider auth;
+    /**
      * Thread pool.
      */
     private ExecutorService threadPool = Executors.newCachedThreadPool();
+    /**
+     * Client class.
+     */
+    private StreamingServerFactory factory;
 
     /**
      * Construct the object.
      * 
      * @param port
      * @param maxConnections
+     * @param auth
      */
-    public StreamingServer(int port, int maxConnections) {
+    public StreamingServer(int port, int maxConnections,
+            InetAddress listenInterface, boolean useSSL,
+            AuthenticationProvider auth, StreamingServerFactory factory) {
         this.port = port;
         this.max = maxConnections;
+        this.auth = auth;
+        this.factory = factory;
+        this.listenInterface = listenInterface;
+        this.useSSL = useSSL;
     }
 
     /**
@@ -64,15 +92,28 @@ public class StreamingServer implements Runnable {
      */
     public void run() {
         try {
-            ServerSocket listener = new ServerSocket(port);
-            Socket server;
+            ServerSocketFactory socketFactory;
+            ServerSocket server;
+
+            if (useSSL) {
+                socketFactory = SSLServerSocketFactory.getDefault();
+            } else {
+                socketFactory = ServerSocketFactory.getDefault();
+            }
+
+            if (listenInterface != null) {
+                server = socketFactory.createServerSocket(port, 5, listenInterface);
+            } else {
+                server = socketFactory.createServerSocket(port);
+            }
 
             while (num < max && running) {
-                Socket sock = listener.accept();
+                Socket sock = server.accept();
                 
                 synchronized (this) {
                     try {
-                        StreamingServerClient client = new StreamingServerClient(this, sock);
+                        StreamingServerClient client =
+                                factory.createClient(this, sock);
                         (new Thread(client)).start();
                         num++;
                     } catch (Throwable t) {
@@ -99,5 +140,14 @@ public class StreamingServer implements Runnable {
      */
     public void shutdown() {
         this.running = false;
+    }
+
+    /**
+     * Get the authentication provider.
+     *
+     * @return
+     */
+    public AuthenticationProvider getAuthenticationProvider() {
+        return auth;
     }
 }

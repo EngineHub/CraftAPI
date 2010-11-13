@@ -17,14 +17,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.sk89q.craftapi;
-
-import com.sk89q.craftapi.xmlrpc.BasicAuthenticationHandler;
-import com.sk89q.craftapi.xmlrpc.XMLRPCServer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
 import org.apache.xmlrpc.XmlRpcException;
+import com.sk89q.craftapi.xmlrpc.BasicAuthenticationHandler;
+import com.sk89q.craftapi.xmlrpc.XMLRPCServer;
+import com.sk89q.craftapi.*;
+import com.sk89q.craftapi.auth.*;
 
 /**
  * XML-RPC server interface.
@@ -35,7 +35,7 @@ public class XMLRPCInterface implements ServerInterface {
     /**
      * Logger.
      */
-    private static final Logger logger = Logger.getLogger("Minecraft");
+    private static final Logger logger = Logger.getLogger("Minecraft.CraftAPI.XML-RPC");
     /**
      * XML-RPC server.
      */
@@ -46,11 +46,12 @@ public class XMLRPCInterface implements ServerInterface {
      * 
      * @param port
      * @param serverAPI
-     * @param logins
+     * @param logiauthns
      */
     public XMLRPCInterface(int port, Map<String,Class> handlers,
-            Map<String,String> logins) {
-        BasicAuthenticationHandler auth = new BasicAuthenticationHandler(logins);
+            AuthenticationProvider authProvider) {
+        BasicAuthenticationHandler auth =
+                new BasicAuthenticationHandler(authProvider);
 
         try {
             xmlRPCServer = new XMLRPCServer(port, auth, handlers);
@@ -63,6 +64,7 @@ public class XMLRPCInterface implements ServerInterface {
      * Start the server.
      */
     public void start() {
+        logger.log(Level.INFO, "Starting XML-RPC server");
         if (xmlRPCServer != null) {
             Thread thread = new Thread(xmlRPCServer);
             thread.start();
@@ -73,6 +75,7 @@ public class XMLRPCInterface implements ServerInterface {
      * Shutdown the server.
      */
     public void shutdown() {
+        logger.log(Level.INFO, "Shutting down XML-RPC server");
         if (xmlRPCServer != null) {
             xmlRPCServer.shutdown();
         }

@@ -17,18 +17,26 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+import com.sk89q.craftapi.streaming.StreamingServer;
 import java.io.*;
 import java.net.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.sk89q.craftapi.*;
+import com.sk89q.craftapi.streaming.*;
+import com.sk89q.craftapi.auth.*;
 
-public class StreamingAPI implements ServerInterface {
+/**
+ * Streaming API server interface.
+ * 
+ * @author Albert
+ */
+public class StreamingAPIInterface implements ServerInterface {
     /**
      * Logger.
      */
     private static final Logger logger =
-            Logger.getLogger("Minecraft.CraftAPI.StreamingAPI");
+            Logger.getLogger("Minecraft.CraftAPI.Streaming");
     /**
      * Port.
      */
@@ -37,6 +45,18 @@ public class StreamingAPI implements ServerInterface {
      * Max connections.
      */
     private int maxConnections;
+    /**
+     * Address to listen to.
+     */
+    private InetAddress listenInterface;
+    /**
+     * Whether to use SSL;
+     */
+    private boolean useSSL;
+    /**
+     * Authentication provider.
+     */
+    private AuthenticationProvider authProvider;
     /**
      * Streaming server.
      */
@@ -48,16 +68,24 @@ public class StreamingAPI implements ServerInterface {
      * @param port
      * @param maxConnections
      */
-    public StreamingAPI(int port, int maxConnections) {
+    public StreamingAPIInterface(int port, int maxConnections,
+            InetAddress listenInterface, boolean useSSL,
+            AuthenticationProvider authProvider) {
         this.port = port;
         this.maxConnections = maxConnections;
+        this.listenInterface = listenInterface;
+        this.useSSL = useSSL;
+        this.authProvider = authProvider;
     }
 
     /**
      * Start the server.
      */
     public void start() {
-        server = new StreamingServer(port, maxConnections);
+        logger.log(Level.INFO, "Starting streaming API server");
+        server = new StreamingServer(port, maxConnections,
+                listenInterface, useSSL, authProvider,
+                new StreamingAPIServerFactory());
         Thread thread = new Thread(server);
         thread.start();
     }
@@ -66,6 +94,7 @@ public class StreamingAPI implements ServerInterface {
      * Shutdown the server.
      */
     public void shutdown() {
+        logger.log(Level.INFO, "Shutting down streaming API server");
         if (server != null) {
             server.shutdown();
         }

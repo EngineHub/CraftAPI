@@ -17,13 +17,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import com.sk89q.craftapi.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
-import java.io.*;
+import java.net.*;
+import org.apache.commons.configuration.XMLConfiguration;
+import org.apache.commons.configuration.HierarchicalConfiguration;
+import org.apache.commons.configuration.ConfigurationException;
+import com.sk89q.craftapi.*;
+import com.sk89q.craftapi.auth.*;
 
 /**
  * Entry point for the plugin for hey0's mod.
@@ -34,11 +38,7 @@ public class CraftAPI extends Plugin {
     /**
      * Logger.
      */
-    private static final Logger logger = Logger.getLogger("Minecraft");
-    /**
-     * CraftAPI settings.
-     */
-    private PropertiesFile properties = new PropertiesFile("craftapi.properties");
+    private static final Logger logger = Logger.getLogger("Minecraft.CraftAPI");
     /**
      * Stores a list of running servers.
      */
@@ -56,30 +56,67 @@ public class CraftAPI extends Plugin {
      */
     @Override
     public void enable() {
-        properties.load();
-
         logger.log(Level.INFO, "CraftAPI is installed");
 
-        // XML-RPC server
-        if (properties.getBoolean("xml-rpc-enable", true)) {
-            try {
-                Map<String,String> logins = readUserPassPairs("xml-rpc-logins.txt");
-                int port = properties.getInt("xml-rpc-port", 20012);
-                Map<String,Class> handlers = new HashMap<String,Class>();
-                handlers.put("server", XMLRPCServerAPI.class);
-                handlers.put("player", XMLRPCPlayerAPI.class);
-                handlers.put("minecraft", XMLRPCMinecraftAPI.class);
-                startServer(new XMLRPCInterface(port, handlers, logins));
-            } catch (FileNotFoundException fe) {
-                logger.log(Level.SEVERE, "xml-rpc-logins.txt cannot be found: "
-                        + fe.getMessage());
-            } catch (IOException ioe) {
-                logger.log(Level.SEVERE, "Failed to read xml-rpc-logins.txt: "
-                        + ioe.getMessage());
-            } catch (NoClassDefFoundError e) {
-                logger.log(Level.SEVERE, "Missing libraries for XML-RPC support: "
-                        + e.getMessage());
+        try {
+            XMLConfiguration config = new XMLConfiguration("craftapi.xml");
+            HierarchicalConfiguration authConfig =
+                config.configurationAt("authentication");
+
+            // XML-RPC server
+            if (config.getBoolean("xml-rpc.enabled", false)) {
+                try {
+                    // Get a custom authentication provider for the "XML-RPC"
+                    // service
+                    AuthenticationProvider auth =
+                        new ConfigurationAuthentication(authConfig, "XML-RPC");
+                    int port = config.getInt("xml-rpc.port", 20012);
+
+                    // Build the map of APIs that will be made available
+                    Map<String,Class> handlers = new HashMap<String,Class>();
+                    handlers.put("server", XMLRPCServerAPI.class);
+                    handlers.put("player", XMLRPCPlayerAPI.class);
+                    handlers.put("minecraft", XMLRPCMinecraftAPI.class);
+
+                    // Start!
+                    startServer(new XMLRPCInterface(port, handlers, auth));
+                } catch (NoClassDefFoundError e) {
+                    logger.log(Level.SEVERE, "Missing libraries for XML-RPC support: "
+                            + e.getMessage());
+                }
             }
+
+            // Streaming API server
+            if (config.getBoolean("streaming-api.enabled", false)) {
+                try {
+                    // Get a custom authentication provider
+                    AuthenticationProvider auth =
+                        new ConfigurationAuthentication(authConfig, "StreamingAPI");
+                    int port = config.getInt("streaming-api.port", 20013);
+                    int maxConnections = config.getInt("streaming-api.max-connections", 10);
+                    String bindAddressStr = config.getString("streaming-api.bind-address");
+                    boolean useSSL = config.getBoolean("streaming-api.use-ssl", false);
+
+                    // Get bind address
+                    InetAddress bindAddress = null;
+                    if (bindAddressStr != null) {
+                        bindAddress = InetAddress.getByName(bindAddressStr);
+                    }
+
+                    // Start!
+                    startServer(new StreamingAPIInterface(port, maxConnections,
+                            bindAddress, useSSL, auth));
+                } catch (UnknownHostException e) {
+                    logger.log(Level.SEVERE, "Unknown bind address for the streaming API server: "
+                            + e.getMessage());
+                } catch (NoClassDefFoundError e) {
+                    logger.log(Level.SEVERE, "Missing libraries for streaming API support: "
+                            + e.getMessage());
+                }
+            }
+        } catch (ConfigurationException e) {
+            logger.log(Level.SEVERE, "Failed to load CraftAPI configuration: "
+                    + e.getMessage());
         }
     }
 
@@ -91,57 +128,6 @@ public class CraftAPI extends Plugin {
         logger.log(Level.INFO, "CraftAPI is closing servers");
 
         stopAllServers();
-    }
-
-    /**
-     * Read a file containing username/password pairs.
-     * 
-     * @param file
-     * @return
-     * @throws IOException
-     */
-    private static Map<String,String> readUserPassPairs(String path)
-            throws IOException {
-        File file = new File(path);
-        FileReader input = null;
-        Map<String,String> logins = new HashMap<String,String>();
-        
-        try {
-            input = new FileReader(file);
-            BufferedReader buff = new BufferedReader(input);
-
-            String line;
-            while ((line = buff.readLine()) != null) {
-                line = line.trim();
-
-                // Blank line
-                if (line.length() == 0) {
-                    continue;
-                }
-                
-                // Comment
-                if (line.charAt(0) == ';' || line.equals("")) {
-                    continue;
-                }
-                
-                String[] parts = line.split(":", 2);
-                if (parts.length < 2) {
-                    logger.log(Level.WARNING, "Found entry with no password in "
-                            + file.getName() + " for '" + line + "'");
-                } else {
-                    logins.put(parts[0], parts[1]);
-                }
-            }
-
-            return logins;
-        } finally {
-            try {
-                if (input != null) {
-                    input.close();
-                }
-            } catch (IOException e2) {
-            }
-        }
     }
 
     /**

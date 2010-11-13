@@ -42,7 +42,7 @@ public class XMLRPCServer implements Runnable {
     /**
      * Logger.
      */
-    private static final Logger logger = Logger.getLogger("Minecraft");
+    private static final Logger logger = Logger.getLogger("Minecraft.CraftAPI.XML-RPC");
     /**
      * XML-RPC web server.
      */
@@ -102,7 +102,6 @@ public class XMLRPCServer implements Runnable {
      */
     public void run() {
         try {
-            logger.log(Level.INFO, "Starting XML-RPC server");
             webServer.start();
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to start XML-RPC server", e);
@@ -113,7 +112,6 @@ public class XMLRPCServer implements Runnable {
      * Shutdown the server.
      */
     public void shutdown() {
-        logger.log(Level.INFO, "Shutting down XML-RPC server");
         webServer.shutdown();
     }
 }
